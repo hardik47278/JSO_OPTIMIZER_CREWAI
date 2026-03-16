@@ -7,3 +7,12 @@ c/
 venv/
 static/.vercel/
 static/.env.local
+.env
+.env.*
+__pycache__/
+*.pyc
+c/
+.venv/
+venv/
+static/.vercel/
+static/.env.local

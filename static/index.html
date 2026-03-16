@@ -1,199 +1,123 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JSO Candidate Experience Agent</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #1a1a1a; }
-    .header { background: #1a1a1a; color: white; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
-    .header h1 { font-size: 18px; font-weight: 500; }
-    .badge { background: #3b82f6; color: white; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
-    .container { max-width: 900px; margin: 32px auto; padding: 0 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    .card { background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e5e5; }
-    .card h2 { font-size: 15px; font-weight: 500; margin-bottom: 16px; color: #1a1a1a; }
-    label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; margin-top: 12px; }
-    input, textarea {
-      width: 100%;
-      padding: 8px 12px;
-      border: 1px solid #e5e5e5;
-      border-radius: 8px;
-      font-size: 14px;
-      font-family: inherit;
-      background: #fafafa;
-    }
-    input:focus, textarea:focus {
-      outline: none;
-      border-color: #3b82f6;
-      background: white;
-    }
-    textarea { resize: vertical; min-height: 80px; }
-    .stars { display: flex; gap: 6px; margin-top: 4px; }
-    .star { font-size: 24px; cursor: pointer; color: #d1d5db; transition: color 0.15s; }
-    .star.active { color: #f59e0b; }
-    button {
-      width: 100%;
-      margin-top: 20px;
-      padding: 10px;
-      background: #1a1a1a;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      cursor: pointer;
-      font-family: inherit;
-    }
-    button:hover { background: #333; }
-    button:disabled { background: #999; cursor: not-allowed; }
-    .results { grid-column: 1 / -1; display: none; gap: 16px; }
-    .results.visible { display: grid; grid-template-columns: 1fr 1fr; }
-    .result-card { background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e5e5; }
-    .result-card.hr { border-top: 3px solid #7c3aed; }
-    .result-card.user { border-top: 3px solid #059669; }
-    .result-card h3 { font-size: 14px; font-weight: 500; margin-bottom: 12px; }
-    .result-card h3.hr-title { color: #7c3aed; }
-    .result-card h3.user-title { color: #059669; }
-    .result-content { font-size: 13px; line-height: 1.7; color: #444; white-space: pre-wrap; }
-    .spinner { display: none; text-align: center; padding: 40px; grid-column: 1 / -1; }
-    .spinner.visible { display: block; }
-    .spinner p { color: #666; font-size: 14px; margin-top: 12px; }
-    .dot-pulse { display: inline-flex; gap: 6px; }
-    .dot-pulse span {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #3b82f6;
-      animation: pulse 1.2s ease-in-out infinite;
-    }
-    .dot-pulse span:nth-child(2) { animation-delay: 0.2s; }
-    .dot-pulse span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes pulse {
-      0%, 100% { opacity: 0.3; transform: scale(0.8); }
-      50% { opacity: 1; transform: scale(1); }
-    }
-    .error {
-      grid-column: 1 / -1;
-      background: #fef2f2;
-      border: 1px solid #fca5a5;
-      border-radius: 8px;
-      padding: 16px;
-      color: #dc2626;
-      font-size: 13px;
-      display: none;
-    }
-    .error.visible { display: block; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JSO Candidate Experience Agent</title>
+
+<style>
+body { font-family: system-ui; background:#f5f5f5; margin:0; }
+.header { background:#111; color:white; padding:16px; }
+.container { max-width:800px; margin:40px auto; background:white; padding:30px; border-radius:10px; }
+label { display:block; margin-top:15px; font-size:14px; }
+input, textarea { width:100%; padding:10px; margin-top:5px; border-radius:6px; border:1px solid #ddd; }
+button { margin-top:20px; padding:12px; width:100%; background:#111; color:white; border:none; border-radius:6px; cursor:pointer; }
+button:disabled { background:#888; }
+.stars span { font-size:28px; cursor:pointer; color:#ccc; }
+.stars .active { color:orange; }
+.result { margin-top:30px; padding:20px; border-radius:8px; background:#fafafa; display:none; }
+.error { color:red; margin-top:15px; }
+.spinner { display:none; text-align:center; margin-top:20px; }
+</style>
+
 </head>
+
 <body>
 
 <div class="header">
-  <h1>JSO Candidate Experience Agent</h1>
-  <span class="badge">AI Powered</span>
+<h2>JSO Candidate Experience Agent</h2>
 </div>
 
 <div class="container">
-  <div class="card" style="grid-column: 1 / -1;">
-    <h2>Submit Candidate Feedback</h2>
 
-    <label>Candidate Phone Number</label>
-    <input type="text" id="phone" placeholder="+91XXXXXXXXXX" value="+919999999999" />
+<label>Phone</label>
+<input id="phone" value="+919999999999">
 
-    <label>Rating</label>
-    <div class="stars" id="stars">
-      <span class="star" data-val="1">★</span>
-      <span class="star" data-val="2">★</span>
-      <span class="star" data-val="3">★</span>
-      <span class="star" data-val="4">★</span>
-      <span class="star" data-val="5">★</span>
-    </div>
-    <input type="hidden" id="rating" value="0" />
+<label>Rating</label>
+<div class="stars">
+<span data="1">★</span>
+<span data="2">★</span>
+<span data="3">★</span>
+<span data="4">★</span>
+<span data="5">★</span>
+</div>
 
-    <label>Candidate Feedback</label>
-    <textarea id="feedback" placeholder="e.g. The consultant was helpful but the guidance was slightly unclear."></textarea>
+<input type="hidden" id="rating" value="0">
 
-    <button id="runBtn" onclick="runAgent()">Run Agent</button>
-  </div>
+<label>Feedback</label>
+<textarea id="feedback"></textarea>
 
-  <div class="spinner" id="spinner">
-    <div class="dot-pulse">
-      <span></span><span></span><span></span>
-    </div>
-    <p>Running AI agents — this takes about 60 seconds...</p>
-  </div>
+<button id="runBtn" onclick="runAgent()">Run Agent</button>
 
-  <div class="error" id="error"></div>
+<div class="spinner" id="spinner">Running agent... (first run can take 50 sec)</div>
 
-  <div class="results" id="results">
-    <div class="result-card hr">
-      <h3 class="hr-title">HR Consultant Dashboard</h3>
-      <div class="result-content" id="hr-output"></div>
-    </div>
-    <div class="result-card user">
-      <h3 class="user-title">User Dashboard</h3>
-      <div class="result-content" id="user-output"></div>
-    </div>
-  </div>
+<div class="error" id="error"></div>
+
+<div class="result" id="result">
+<h3>HR Dashboard</h3>
+<pre id="hr"></pre>
+
+<h3>User Dashboard</h3>
+<pre id="user"></pre>
+</div>
+
 </div>
 
 <script>
-  let selectedRating = 0;
 
-  document.querySelectorAll('.star').forEach(star => {
-    star.addEventListener('click', () => {
-      selectedRating = parseInt(star.dataset.val);
-      document.getElementById('rating').value = selectedRating;
-      document.querySelectorAll('.star').forEach(s => {
-        s.classList.toggle('active', parseInt(s.dataset.val) <= selectedRating);
-      });
-    });
-  });
+let rating = 0;
 
-  async function runAgent() {
-    const phone = document.getElementById('phone').value.trim();
-    const rating = parseInt(document.getElementById('rating').value);
-    const feedback = document.getElementById('feedback').value.trim();
+document.querySelectorAll('.stars span').forEach(star=>{
+star.onclick=()=>{
+rating = star.getAttribute("data");
+document.getElementById("rating").value = rating;
 
-    if (!phone || !rating || !feedback) {
-      showError('Please fill in all fields and select a rating.');
-      return;
-    }
+document.querySelectorAll('.stars span').forEach(s=>{
+s.classList.remove("active");
+if(s.getAttribute("data") <= rating) s.classList.add("active");
+});
+};
+});
 
-    document.getElementById('runBtn').disabled = true;
-    document.getElementById('results').classList.remove('visible');
-    document.getElementById('error').classList.remove('visible');
-    document.getElementById('spinner').classList.add('visible');
+async function runAgent(){
 
-    try {
-      const res = await fetch('/api', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, rating, feedback })
-      });
+const phone = document.getElementById("phone").value.trim();
+const rating = document.getElementById("rating").value;
+const feedback = document.getElementById("feedback").value.trim();
 
-      if (!res.ok) {
-        throw new Error('Server error: ' + res.status);
-      }
+if(!phone || !rating || !feedback){
+document.getElementById("error").innerText="Fill all fields";
+return;
+}
 
-      const data = await res.json();
+document.getElementById("error").innerText="";
+document.getElementById("spinner").style.display="block";
+document.getElementById("runBtn").disabled=true;
+document.getElementById("result").style.display="none";
 
-      document.getElementById('hr-output').textContent = data.hr_dashboard || '';
-      document.getElementById('user-output').textContent = data.user_dashboard || '';
-      document.getElementById('results').classList.add('visible');
+try{
 
-    } catch (err) {
-      showError('Something went wrong: ' + err.message);
-    } finally {
-      document.getElementById('spinner').classList.remove('visible');
-      document.getElementById('runBtn').disabled = false;
-    }
-  }
+const res = await fetch("https://jso-optimizer-crewai.onrender.com/analyze",{
+method:"POST",
+headers:{ "Content-Type":"application/json" },
+body: JSON.stringify({ phone, rating: parseInt(rating), feedback })
+});
 
-  function showError(msg) {
-    const el = document.getElementById('error');
-    el.textContent = msg;
-    el.classList.add('visible');
-  }
+const data = await res.json();
+
+document.getElementById("hr").innerText = data.hr_dashboard;
+document.getElementById("user").innerText = data.user_dashboard;
+document.getElementById("result").style.display="block";
+
+}catch(e){
+document.getElementById("error").innerText = e.message;
+}
+
+document.getElementById("spinner").style.display="none";
+document.getElementById("runBtn").disabled=false;
+
+}
+
 </script>
 
 </body>

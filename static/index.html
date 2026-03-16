@@ -17,7 +17,7 @@ button:disabled { background:#888; }
 .stars .active { color:orange; }
 .result { margin-top:30px; padding:20px; border-radius:8px; background:#fafafa; display:none; }
 .error { color:red; margin-top:15px; }
-.spinner { display:none; text-align:center; margin-top:20px; }
+.spinner { display:none; text-align:center; margin-top:20px; font-weight:600; }
 </style>
 
 </head>
@@ -49,7 +49,9 @@ button:disabled { background:#888; }
 
 <button id="runBtn" onclick="runAgent()">Run Agent</button>
 
-<div class="spinner" id="spinner">Running agent... (first run can take 50 sec)</div>
+<div class="spinner" id="spinner">
+⏳ Running AI Agent… first run can take 50 sec (Render cold start)
+</div>
 
 <div class="error" id="error"></div>
 
@@ -65,16 +67,16 @@ button:disabled { background:#888; }
 
 <script>
 
-let rating = 0;
+let selectedRating = 0;
 
 document.querySelectorAll('.stars span').forEach(star=>{
 star.onclick=()=>{
-rating = star.getAttribute("data");
-document.getElementById("rating").value = rating;
+selectedRating = star.getAttribute("data");
+document.getElementById("rating").value = selectedRating;
 
 document.querySelectorAll('.stars span').forEach(s=>{
 s.classList.remove("active");
-if(s.getAttribute("data") <= rating) s.classList.add("active");
+if(s.getAttribute("data") <= selectedRating) s.classList.add("active");
 });
 };
 });
@@ -100,17 +102,25 @@ try{
 const res = await fetch("https://jso-optimizer-crewai.onrender.com/analyze",{
 method:"POST",
 headers:{ "Content-Type":"application/json" },
-body: JSON.stringify({ phone, rating: parseInt(rating), feedback })
+body: JSON.stringify({
+phone,
+rating: parseInt(rating),
+feedback
+})
 });
+
+if(!res.ok){
+throw new Error("Backend error: " + res.status);
+}
 
 const data = await res.json();
 
-document.getElementById("hr").innerText = data.hr_dashboard;
-document.getElementById("user").innerText = data.user_dashboard;
+document.getElementById("hr").innerText = data.hr_dashboard || "";
+document.getElementById("user").innerText = data.user_dashboard || "";
 document.getElementById("result").style.display="block";
 
 }catch(e){
-document.getElementById("error").innerText = e.message;
+document.getElementById("error").innerText = "Failed to fetch backend. Wait 50 sec and try again.";
 }
 
 document.getElementById("spinner").style.display="none";

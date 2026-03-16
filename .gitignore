@@ -1,5 +1,9 @@
-.vercel
-
 .env
+.env.*
 __pycache__/
 *.pyc
+c/
+.venv/
+venv/
+static/.vercel/
+static/.env.local

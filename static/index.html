@@ -1,134 +1,126 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>JSO Candidate Experience Agent</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSO Candidate Experience Agent</title>
 
-<style>
-body { font-family: system-ui; background:#f5f5f5; margin:0; }
-.header { background:#111; color:white; padding:16px; }
-.container { max-width:800px; margin:40px auto; background:white; padding:30px; border-radius:10px; }
-label { display:block; margin-top:15px; font-size:14px; }
-input, textarea { width:100%; padding:10px; margin-top:5px; border-radius:6px; border:1px solid #ddd; }
-button { margin-top:20px; padding:12px; width:100%; background:#111; color:white; border:none; border-radius:6px; cursor:pointer; }
-button:disabled { background:#888; }
-.stars span { font-size:28px; cursor:pointer; color:#ccc; }
-.stars .active { color:orange; }
-.result { margin-top:30px; padding:20px; border-radius:8px; background:#fafafa; display:none; }
-.error { color:red; margin-top:15px; }
-.spinner { display:none; text-align:center; margin-top:20px; font-weight:600; }
-</style>
-
+  <style>
+    body { font-family: system-ui; background: #f5f5f5; margin: 0; }
+    .header { background: #111; color: white; padding: 16px; }
+    .container { max-width: 800px; margin: 40px auto; background: white; padding: 30px; border-radius: 10px; }
+    label { display: block; margin-top: 15px; font-size: 14px; }
+    input, textarea { width: 100%; padding: 10px; margin-top: 5px; border-radius: 6px; border: 1px solid #ddd; box-sizing: border-box; }
+    button { margin-top: 20px; padding: 12px; width: 100%; background: #111; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    button:disabled { background: #888; }
+    .stars span { font-size: 28px; cursor: pointer; color: #ccc; }
+    .stars .active { color: orange; }
+    .result { margin-top: 30px; padding: 20px; border-radius: 8px; background: #fafafa; display: none; }
+    .error { color: red; margin-top: 15px; white-space: pre-wrap; }
+    .spinner { display: none; text-align: center; margin-top: 20px; font-weight: 600; }
+  </style>
 </head>
 
 <body>
+  <div class="header">
+    <h2>JSO Candidate Experience Agent</h2>
+  </div>
 
-<div class="header">
-<h2>JSO Candidate Experience Agent</h2>
-</div>
+  <div class="container">
+    <label>Phone</label>
+    <input id="phone" value="+919999999999" />
 
-<div class="container">
+    <label>Rating</label>
+    <div class="stars">
+      <span data="1">★</span>
+      <span data="2">★</span>
+      <span data="3">★</span>
+      <span data="4">★</span>
+      <span data="5">★</span>
+    </div>
 
-<label>Phone</label>
-<input id="phone" value="+919999999999">
+    <input type="hidden" id="rating" value="0" />
 
-<label>Rating</label>
-<div class="stars">
-<span data="1">★</span>
-<span data="2">★</span>
-<span data="3">★</span>
-<span data="4">★</span>
-<span data="5">★</span>
-</div>
+    <label>Feedback</label>
+    <textarea id="feedback" placeholder="Write candidate feedback here..."></textarea>
 
-<input type="hidden" id="rating" value="0">
+    <button id="runBtn" onclick="runAgent()">Run Agent</button>
 
-<label>Feedback</label>
-<textarea id="feedback"></textarea>
+    <div class="spinner" id="spinner">
+      ⏳ Running AI Agent… first run can take 50 sec (Render cold start)
+    </div>
 
-<button id="runBtn" onclick="runAgent()">Run Agent</button>
+    <div class="error" id="error"></div>
 
-<div class="spinner" id="spinner">
-⏳ Running AI Agent… first run can take 50 sec (Render cold start)
-</div>
+    <div class="result" id="result">
+      <h3>HR Dashboard</h3>
+      <pre id="hr"></pre>
 
-<div class="error" id="error"></div>
+      <h3>User Dashboard</h3>
+      <pre id="user"></pre>
+    </div>
+  </div>
 
-<div class="result" id="result">
-<h3>HR Dashboard</h3>
-<pre id="hr"></pre>
+  <script>
+    let selectedRating = 0;
 
-<h3>User Dashboard</h3>
-<pre id="user"></pre>
-</div>
+    document.querySelectorAll(".stars span").forEach(star => {
+      star.onclick = () => {
+        selectedRating = star.getAttribute("data");
+        document.getElementById("rating").value = selectedRating;
 
-</div>
+        document.querySelectorAll(".stars span").forEach(s => {
+          s.classList.remove("active");
+          if (parseInt(s.getAttribute("data")) <= parseInt(selectedRating)) {
+            s.classList.add("active");
+          }
+        });
+      };
+    });
 
-<script>
+    async function runAgent() {
+      const phone = document.getElementById("phone").value.trim();
+      const rating = document.getElementById("rating").value;
+      const feedback = document.getElementById("feedback").value.trim();
 
-let selectedRating = 0;
+      if (!phone || !rating || !feedback || parseInt(rating) === 0) {
+        document.getElementById("error").innerText = "Fill all fields";
+        return;
+      }
 
-document.querySelectorAll('.stars span').forEach(star=>{
-star.onclick=()=>{
-selectedRating = star.getAttribute("data");
-document.getElementById("rating").value = selectedRating;
+      document.getElementById("error").innerText = "";
+      document.getElementById("spinner").style.display = "block";
+      document.getElementById("runBtn").disabled = true;
+      document.getElementById("result").style.display = "none";
 
-document.querySelectorAll('.stars span').forEach(s=>{
-s.classList.remove("active");
-if(s.getAttribute("data") <= selectedRating) s.classList.add("active");
-});
-};
-});
+      try {
+        const res = await fetch("https://jso-optimizer-crewai.onrender.com/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            phone,
+            rating: parseInt(rating),
+            feedback
+          })
+        });
 
-async function runAgent(){
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error("Backend error " + res.status + ": " + text);
+        }
 
-const phone = document.getElementById("phone").value.trim();
-const rating = document.getElementById("rating").value;
-const feedback = document.getElementById("feedback").value.trim();
+        const data = await res.json();
 
-if(!phone || !rating || !feedback){
-document.getElementById("error").innerText="Fill all fields";
-return;
-}
+        document.getElementById("hr").innerText = data.hr_dashboard || "";
+        document.getElementById("user").innerText = data.user_dashboard || "";
+        document.getElementById("result").style.display = "block";
+      } catch (e) {
+        document.getElementById("error").innerText = e.message || "Failed to fetch backend.";
+      }
 
-document.getElementById("error").innerText="";
-document.getElementById("spinner").style.display="block";
-document.getElementById("runBtn").disabled=true;
-document.getElementById("result").style.display="none";
-
-try{
-
-const res = await fetch("https://jso-optimizer-crewai.onrender.com/analyze",{
-method:"POST",
-headers:{ "Content-Type":"application/json" },
-body: JSON.stringify({
-phone,
-rating: parseInt(rating),
-feedback
-})
-});
-
-if(!res.ok){
-throw new Error("Backend error: " + res.status);
-}
-
-const data = await res.json();
-
-document.getElementById("hr").innerText = data.hr_dashboard || "";
-document.getElementById("user").innerText = data.user_dashboard || "";
-document.getElementById("result").style.display="block";
-
-}catch(e){
-document.getElementById("error").innerText = "Failed to fetch backend. Wait 50 sec and try again.";
-}
-
-document.getElementById("spinner").style.display="none";
-document.getElementById("runBtn").disabled=false;
-
-}
-
-</script>
-
+      document.getElementById("spinner").style.display = "none";
+      document.getElementById("runBtn").disabled = false;
+    }
+  </script>
 </body>
 </html>

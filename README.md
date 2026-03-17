@@ -133,6 +133,12 @@ A **Candidate Experience Agent** built as a multi-agent sequential pipeline coor
 
 ---
 
+
+## FLOW DIAGRAM
+
+<img width="574" height="912" alt="image" src="https://github.com/user-attachments/assets/bc819c8b-ffe2-4354-9c8e-d1782137a43e" />
+
+
 ## 🏗️ Technical Architecture
 
 * **Frontend:** NextJS + React

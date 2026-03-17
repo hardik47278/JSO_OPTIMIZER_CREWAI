@@ -4,3 +4,4 @@ crewai
 openai
 pydantic
 uvicorn
+supabase

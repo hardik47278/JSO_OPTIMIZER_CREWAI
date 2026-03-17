@@ -1,17 +1,17 @@
 import os
+from datetime import datetime, timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
 from crewai import Agent, Task, Crew, Process, LLM
+from supabase import create_client, Client
 
 load_dotenv()
 
 app = FastAPI(title="Candidate Experience API")
-
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,6 +37,38 @@ def get_llm():
     if not api_key:
         raise ValueError("OPENAI_API_KEY is not set")
     return LLM(model="gpt-4o-mini")
+
+
+def get_supabase() -> Client:
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_KEY")
+
+    if not supabase_url or not supabase_key:
+        raise ValueError("SUPABASE_URL or SUPABASE_KEY is not set")
+
+    return create_client(supabase_url, supabase_key)
+
+
+def save_feedback_to_supabase(
+    phone: str,
+    rating: int,
+    feedback: str,
+    hr_dashboard: str,
+    user_dashboard: str,
+):
+    supabase = get_supabase()
+
+    row = {
+        "phone": phone,
+        "rating": rating,
+        "feedback": feedback,
+        "hr_output": hr_dashboard,
+        "user_output": user_dashboard,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    response = supabase.table("candidate_feedback").insert(row).execute()
+    return response
 
 
 def build_crew():
@@ -94,9 +126,7 @@ def build_crew():
     sentiment_analysis_agent = Agent(
         role="Sentiment Analysis Agent",
         goal="Analyze candidate feedback for sentiment, tone, and emotional expression.",
-        backstory=(
-            "You specialize in understanding emotional tone of written feedback."
-        ),
+        backstory="You specialize in understanding emotional tone of written feedback.",
         verbose=False,
         llm=llm,
         allow_delegation=False,
@@ -107,11 +137,8 @@ def build_crew():
 
     satisfaction_agent = Agent(
         role="Satisfaction Scoring Agent",
-        goal="Generate an overall candidate satisfaction score using the rating and sentiment analysis.",
-        backstory=(
-            "You assess the candidate's overall experience by combining rating, "
-            "sentiment analysis, and feedback context into a final score."
-        ),
+        goal="Generate an overall candidate satisfaction score.",
+        backstory="You assess overall experience using rating + sentiment.",
         verbose=False,
         llm=llm,
         allow_delegation=False,
@@ -122,11 +149,8 @@ def build_crew():
 
     issue_detection_agent = Agent(
         role="Issue Detection Agent",
-        goal="Identify specific issues or concerns raised in candidate feedback.",
-        backstory=(
-            "You detect operational, communication, and experience-related issues "
-            "and classify their severity."
-        ),
+        goal="Identify issues in feedback.",
+        backstory="You detect operational or communication issues.",
         verbose=False,
         llm=llm,
         allow_delegation=False,
@@ -137,11 +161,8 @@ def build_crew():
 
     report_agent = Agent(
         role="Report Agent",
-        goal="Generate a final candidate experience report for HR and dashboard use.",
-        backstory=(
-            "You combine all upstream outputs into a concise, actionable report "
-            "that HR teams can use for decision-making."
-        ),
+        goal="Generate final experience report.",
+        backstory="You combine outputs into actionable report.",
         verbose=False,
         llm=llm,
         allow_delegation=False,
@@ -152,11 +173,8 @@ def build_crew():
 
     guardrail_agent = Agent(
         role="Guardrail Agent",
-        goal="Validate the final report for consistency, completeness, fairness, and score accuracy.",
-        backstory=(
-            "You are responsible for responsible-AI validation. You verify score range, "
-            "sentiment alignment, issue reflection, and output safety."
-        ),
+        goal="Validate final report.",
+        backstory="You ensure score validity and fairness.",
         verbose=False,
         llm=llm,
         allow_delegation=False,
@@ -166,161 +184,70 @@ def build_crew():
     )
 
     orchestrator_task = Task(
-        description=(
-            "A consultation has been completed.\n"
-            "Coordinate the candidate experience workflow:\n"
-            "1. Notification\n"
-            "2. Feedback collection\n"
-            "3. Analysis\n"
-            "4. Report generation\n"
-            "5. Guardrail validation\n"
-            "6. HR Dashboard publishing\n"
-            "7. User Dashboard publishing"
-        ),
-        expected_output="Workflow initiated successfully.",
+        description="Start workflow.",
+        expected_output="Workflow initiated.",
         agent=orchestrator_agent,
     )
 
     notification_task = Task(
-        description=(
-            "Draft a short, polite WhatsApp feedback request message for the candidate.\n"
-            "Candidate phone number: {phone}\n"
-            "Note: WhatsApp sending is disabled in this prototype."
-        ),
-        expected_output="Drafted message text and delivery status.",
+        description="Draft WhatsApp feedback request for {phone}",
+        expected_output="Message drafted.",
         agent=notification_agent,
         context=[orchestrator_task],
     )
 
     feedback_collection_task = Task(
-        description=(
-            "Candidate rating: {rating}\n"
-            "Candidate feedback: {feedback}\n\n"
-            "Note: In production this arrives via WhatsApp webhook. "
-            "In this prototype it is passed directly as crew inputs.\n\n"
-            "Structure the feedback for downstream analysis."
-        ),
-        expected_output=(
-            "Structured Feedback:\n"
-            "- Rating: <value>\n"
-            "- Feedback Summary: <short summary>\n"
-            "- Key Points: <bullet list>"
-        ),
+        description="Candidate rating {rating}, feedback {feedback}",
+        expected_output="Structured feedback.",
         agent=feedback_collector_agent,
         context=[notification_task],
     )
 
     sentiment_analysis_task = Task(
-        description="Analyze the structured feedback for sentiment, tone, and emotion.",
-        expected_output=(
-            "Sentiment Analysis Result:\n"
-            "- Sentiment: <Positive / Neutral / Negative>\n"
-            "- Tone: <Friendly / Neutral / Frustrated / Hostile>\n"
-            "- Emotion: <Happy / Neutral / Confused / Angry / Sad>"
-        ),
+        description="Analyze sentiment.",
+        expected_output="Sentiment result.",
         agent=sentiment_analysis_agent,
         context=[feedback_collection_task],
     )
 
     satisfaction_scoring_task = Task(
-        description=(
-            "Using the candidate rating, structured feedback, and sentiment analysis, "
-            "generate an overall satisfaction score from 1 to 5 with justification."
-        ),
-        expected_output=(
-            "Satisfaction Scoring Result:\n"
-            "- Satisfaction Score: <1 to 5>\n"
-            "- Justification: <short explanation>"
-        ),
+        description="Generate satisfaction score.",
+        expected_output="Score result.",
         agent=satisfaction_agent,
         context=[feedback_collection_task, sentiment_analysis_task],
     )
 
     issue_detection_task = Task(
-        description=(
-            "Identify specific issues in the candidate feedback such as unclear guidance, "
-            "poor communication, delayed response, or negative behavior."
-        ),
-        expected_output=(
-            "Issue Detection Result:\n"
-            "- Issues Detected: <bullet list or None>\n"
-            "- Severity Level: <Low / Medium / High>"
-        ),
+        description="Detect issues.",
+        expected_output="Issue result.",
         agent=issue_detection_agent,
         context=[feedback_collection_task],
     )
 
     report_generation_task = Task(
-        description=(
-            "Generate a final candidate experience report combining sentiment, "
-            "satisfaction score, and issue detection. Make it concise and dashboard-friendly."
-        ),
-        expected_output=(
-            "Candidate Experience Report:\n"
-            "- Satisfaction Score: <value>\n"
-            "- Sentiment: <value>\n"
-            "- Issues Detected: <bullet list or None>\n"
-            "- Summary: <short paragraph>\n"
-            "- Recommendation: <improvement suggestion>"
-        ),
+        description="Generate report.",
+        expected_output="Report.",
         agent=report_agent,
         context=[sentiment_analysis_task, satisfaction_scoring_task, issue_detection_task],
     )
 
     guardrail_validation_task = Task(
-        description=(
-            "Validate the candidate experience report:\n"
-            "- satisfaction score is between 1 and 5\n"
-            "- sentiment logically aligns with score\n"
-            "- detected issues are reflected in summary and recommendation\n"
-            "- report is complete, fair, and safe for display"
-        ),
-        expected_output=(
-            "Validation Result:\n"
-            "- Status: Valid / Needs Review\n"
-            "- Reason: <short explanation>\n"
-            "- Final Checked Score: <1 to 5>"
-        ),
+        description="Validate report.",
+        expected_output="Validation result.",
         agent=guardrail_agent,
         context=[report_generation_task],
     )
 
     hr_dashboard_task = Task(
-        description=(
-            "Prepare the full report for the HR Consultant Dashboard.\n"
-            "Include everything: score, sentiment, tone, issues, severity, summary, recommendation.\n"
-            "Only publish if guardrail validation passed."
-        ),
-        expected_output=(
-            "HR Dashboard Output:\n"
-            "- Satisfaction Score: <1 to 5>\n"
-            "- Sentiment: <value>\n"
-            "- Tone: <value>\n"
-            "- Issues Detected: <bullet list or None>\n"
-            "- Severity: <Low / Medium / High>\n"
-            "- Summary: <paragraph>\n"
-            "- Recommendation: <improvement suggestion>\n"
-            "- Publish Status: Published to HR Dashboard"
-        ),
+        description="Prepare HR dashboard output.",
+        expected_output="HR output.",
         agent=orchestrator_agent,
         context=[guardrail_validation_task],
     )
 
     user_dashboard_task = Task(
-        description=(
-            "Prepare a friendly candidate-facing summary for the User Dashboard.\n"
-            "DO NOT include scores, issues, severity, or anything punitive.\n"
-            "DO include a thank-you message, positive consultation summary, "
-            "one encouragement tip, and feedback confirmation."
-        ),
-        expected_output=(
-            "User Dashboard Output:\n"
-            "- Thank You Message: <warm message>\n"
-            "- Consultation Summary: <1-2 sentences positive framing>\n"
-            "- Encouragement / Tip: <one forward-looking suggestion>\n"
-            "- Feedback Status: Received and noted\n"
-            "- Publish Status: Published to User Dashboard"
-        ),
+        description="Prepare user dashboard output.",
+        expected_output="User output.",
         agent=orchestrator_agent,
         context=[hr_dashboard_task],
     )
@@ -355,35 +282,36 @@ def build_crew():
     return crew
 
 
-@app.get("/")
-async def root():
-    return {"message": "API is running"}
-
-
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
-
-
 @app.post("/analyze")
 async def run_agent(data: FeedbackInput):
-    crew = build_crew()
+    try:
+        crew = build_crew()
 
-    result = crew.kickoff(
-        inputs={
-            "phone": data.phone,
-            "rating": data.rating,
-            "feedback": data.feedback,
+        result = crew.kickoff(
+            inputs={
+                "phone": data.phone,
+                "rating": data.rating,
+                "feedback": data.feedback,
+            }
+        )
+
+        tasks = crew.tasks
+        hr_output = str(tasks[-2].output.raw) if tasks[-2].output else ""
+        user_output = str(tasks[-1].output.raw) if tasks[-1].output else ""
+
+        save_feedback_to_supabase(
+            phone=data.phone,
+            rating=data.rating,
+            feedback=data.feedback,
+            hr_dashboard=hr_output,
+            user_dashboard=user_output,
+        )
+
+        return {
+            "status": "success",
+            "hr_dashboard": hr_output,
+            "user_dashboard": user_output,
         }
-    )
 
-    tasks = crew.tasks
-    hr_output = str(tasks[-2].output.raw) if tasks[-2].output else ""
-    user_output = str(tasks[-1].output.raw) if tasks[-1].output else ""
-
-    return {
-        "status": "success",
-        "final_output": str(result),
-        "hr_dashboard": hr_output,
-        "user_dashboard": user_output,
-    }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

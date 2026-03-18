@@ -203,6 +203,8 @@ Frontend → API → Orchestrator Agent → Sub Agents → Guardrail → Supabas
 
 * Advanced job recommendation models
 * Resume scoring engine
+* Evaluation metrics to be added
+* Redis celery to handle multiple users
 * Consultant performance prediction
 * RL-based scheduling optimization
 * Multilingual AI assistant

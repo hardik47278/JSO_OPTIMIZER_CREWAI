@@ -202,6 +202,7 @@ Frontend → API → Orchestrator Agent → Sub Agents → Guardrail → Supabas
 ## 🔮 Future Enhancements
 
 * Advanced job recommendation models
+* HANDLING test cases via pydantic for proper country code ,feedbacks
 * Resume scoring engine
 * Evaluation metrics to be added
 * Redis celery to handle multiple users
